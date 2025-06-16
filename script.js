@@ -398,39 +398,167 @@ async function generatePDF() {
         button.innerHTML = 'Generating...';
         button.classList.add('loading');
         
-        const resumeElement = document.getElementById('resume-preview');
+        // Create a temporary container for PDF-optimized layout
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = `
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+            width: 794px;
+            background: white;
+            font-family: 'Times New Roman', serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #000;
+            padding: 40px;
+            box-sizing: border-box;
+        `;
         
-        // Use html2canvas to capture the resume
-        const canvas = await html2canvas(resumeElement, {
+        // Generate professional PDF content
+        tempContainer.innerHTML = `
+            <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 15px;">
+                <h1 style="font-size: 24px; font-weight: bold; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px;">${resumeData.personal.fullName || 'YOUR NAME'}</h1>
+                <div style="font-size: 11px; color: #333; margin-bottom: 5px;">
+                    ${[resumeData.personal.email, resumeData.personal.phone, resumeData.personal.address].filter(Boolean).join(' • ')}
+                </div>
+                ${(resumeData.personal.linkedin || resumeData.personal.github || resumeData.personal.portfolio) ? 
+                    `<div style="font-size: 10px; color: #666;">
+                        ${[resumeData.personal.linkedin, resumeData.personal.github, resumeData.personal.portfolio].filter(Boolean).join(' • ')}
+                    </div>` : ''}
+            </div>
+
+            ${resumeData.personal.objective ? 
+                `<div style="margin-bottom: 25px;">
+                    <h2 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px 0; padding-bottom: 3px; border-bottom: 1px solid #000;">Professional Summary</h2>
+                    <p style="margin: 0; text-align: justify; line-height: 1.5;">${resumeData.personal.objective}</p>
+                </div>` : ''}
+
+            ${resumeData.education.some(edu => edu.degree || edu.institution) ? 
+                `<div style="margin-bottom: 25px;">
+                    <h2 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px 0; padding-bottom: 3px; border-bottom: 1px solid #000;">Education</h2>
+                    ${resumeData.education.map(edu => {
+                        if (!edu.degree && !edu.institution) return '';
+                        return `
+                            <div style="margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px;">
+                                    <div>
+                                        ${edu.degree ? `<div style="font-weight: bold; font-size: 12px;">${edu.degree}</div>` : ''}
+                                        ${edu.institution ? `<div style="font-style: italic; color: #333; font-size: 11px;">${edu.institution}</div>` : ''}
+                                    </div>
+                                    <div style="text-align: right; font-size: 10px; color: #666;">
+                                        ${edu.year ? `<div>${edu.year}</div>` : ''}
+                                        ${edu.gpa ? `<div>GPA: ${edu.gpa}</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>` : ''}
+
+            ${resumeData.experience.some(exp => exp.position || exp.company) ? 
+                `<div style="margin-bottom: 25px;">
+                    <h2 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px 0; padding-bottom: 3px; border-bottom: 1px solid #000;">Professional Experience</h2>
+                    ${resumeData.experience.map(exp => {
+                        if (!exp.position && !exp.company) return '';
+                        return `
+                            <div style="margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                                    <div>
+                                        ${exp.position ? `<div style="font-weight: bold; font-size: 12px;">${exp.position}</div>` : ''}
+                                        ${exp.company ? `<div style="font-style: italic; color: #333; font-size: 11px;">${exp.company}</div>` : ''}
+                                    </div>
+                                    ${exp.duration ? `<div style="font-size: 10px; color: #666;">${exp.duration}</div>` : ''}
+                                </div>
+                                ${exp.description ? `<div style="font-size: 11px; line-height: 1.4; text-align: justify; margin-top: 4px;">${exp.description}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>` : ''}
+
+            ${resumeData.skills.length > 0 ? 
+                `<div style="margin-bottom: 25px;">
+                    <h2 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px 0; padding-bottom: 3px; border-bottom: 1px solid #000;">Technical Skills</h2>
+                    <div style="font-size: 11px; line-height: 1.5;">
+                        ${resumeData.skills.join(' • ')}
+                    </div>
+                </div>` : ''}
+
+            ${resumeData.projects.some(proj => proj.name || proj.description) ? 
+                `<div style="margin-bottom: 25px;">
+                    <h2 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px 0; padding-bottom: 3px; border-bottom: 1px solid #000;">Projects</h2>
+                    ${resumeData.projects.map(project => {
+                        if (!project.name && !project.description) return '';
+                        return `
+                            <div style="margin-bottom: 12px;">
+                                ${project.name ? `<div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">${project.name}</div>` : ''}
+                                ${project.technologies ? `<div style="font-size: 10px; color: #666; font-style: italic; margin-bottom: 3px;">${project.technologies}</div>` : ''}
+                                ${project.description ? `<div style="font-size: 11px; line-height: 1.4; text-align: justify;">${project.description}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>` : ''}
+
+            ${resumeData.certifications.length > 0 ? 
+                `<div style="margin-bottom: 25px;">
+                    <h2 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px 0; padding-bottom: 3px; border-bottom: 1px solid #000;">Certifications</h2>
+                    <div style="font-size: 11px; line-height: 1.5;">
+                        ${resumeData.certifications.map(cert => `• ${cert}`).join('<br>')}
+                    </div>
+                </div>` : ''}
+        `;
+        
+        document.body.appendChild(tempContainer);
+        
+        // Use html2canvas with optimized settings for PDF
+        const canvas = await html2canvas(tempContainer, {
             scale: 2,
             useCORS: true,
             allowTaint: true,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            width: 794,
+            height: 1123, // A4 aspect ratio
+            scrollX: 0,
+            scrollY: 0
         });
         
-        const imgData = canvas.toDataURL('image/png');
+        // Remove temporary container
+        document.body.removeChild(tempContainer);
         
-        // Create PDF using jsPDF
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        
+        // Create PDF with exact A4 dimensions
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdf = new jsPDF('portrait', 'mm', 'a4');
         
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-        const imgX = (pdfWidth - imgWidth * ratio) / 2;
-        const imgY = 0;
+        // A4 dimensions in mm
+        const pageWidth = 210;
+        const pageHeight = 297;
         
-        pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+        // Calculate image dimensions to fit A4 perfectly
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * pageWidth) / canvas.width;
+        
+        // If content is too tall, scale it down to fit
+        if (imgHeight > pageHeight) {
+            const scaleFactor = pageHeight / imgHeight;
+            const finalWidth = imgWidth * scaleFactor;
+            const finalHeight = pageHeight;
+            const xOffset = (pageWidth - finalWidth) / 2;
+            
+            pdf.addImage(imgData, 'PNG', xOffset, 0, finalWidth, finalHeight);
+        } else {
+            // Center vertically if content is shorter than A4
+            const yOffset = (pageHeight - imgHeight) / 2;
+            pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
+        }
         
         const fileName = resumeData.personal.fullName ? 
             `${resumeData.personal.fullName.replace(/\s+/g, '_')}_Resume.pdf` : 
-            'Resume.pdf';
+            'Professional_Resume.pdf';
             
         pdf.save(fileName);
         
-        showToast('Resume downloaded successfully!', 'success');
+        showToast('Professional resume downloaded successfully!', 'success');
         
     } catch (error) {
         console.error('Error generating PDF:', error);
